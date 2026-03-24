@@ -463,6 +463,46 @@ table.rt tr:hover td{background:rgba(0,212,255,.025);}
     <button class="btn btn-primary" onclick="renderReport()">🔄 Refresh</button>
     <button class="btn btn-ghost" onclick="exportCSV()">📥 Export CSV</button>
   </div>
+
+  <!-- ── EXPORT EXCEL PANEL ── -->
+  <div class="slabel" style="margin-top:16px;">ออก Excel Report</div>
+  <div class="card">
+    <div class="frow">
+      <div class="fg">
+        <div class="fl">📋 ประเภทรายงาน</div>
+        <select id="expType">
+          <option value="daily">Daily Report (รายวัน)</option>
+          <option value="weekly">Weekly Report (รายสัปดาห์)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <div class="fl">📅 เดือน</div>
+        <input type="month" id="expMonth" style="font-family:var(--mono);">
+      </div>
+      <div class="fg full">
+        <div class="fl">🏭 เครื่องจักร</div>
+        <select id="expMachine">
+          <option value="ALL_CHL">Chiller ทุกเครื่อง (ACH-01/1, 01/2, 01/3)</option>
+          <option value="ACH-01/1">ACH-01/1 เท่านั้น</option>
+          <option value="ACH-01/2">ACH-01/2 เท่านั้น</option>
+          <option value="ACH-01/3">ACH-01/3 เท่านั้น</option>
+          <option value="ALL_AHU">AHU ทุกเครื่อง (F-101 ถึง F-204)</option>
+          <option value="AHU-F-101">AHU-F-101 เท่านั้น</option>
+          <option value="AHU-F-102">AHU-F-102 เท่านั้น</option>
+          <option value="AHU-F-103">AHU-F-103 เท่านั้น</option>
+          <option value="AHU-F-201">AHU-F-201 เท่านั้น</option>
+          <option value="AHU-F-202">AHU-F-202 เท่านั้น</option>
+          <option value="AHU-F-203">AHU-F-203 เท่านั้น</option>
+          <option value="AHU-F-204">AHU-F-204 เท่านั้น</option>
+        </select>
+      </div>
+    </div>
+    <div id="expPreview" style="font-family:var(--mono);font-size:10px;color:var(--dim);
+      background:var(--s2);border-radius:6px;padding:8px;margin:8px 0;display:none;"></div>
+    <button class="btn btn-success" onclick="exportExcel()" style="margin-top:4px;">
+      📊 ส่งไป Google Sheets
+    </button>
+  </div>
 </div>
 
 <!-- ========== WORK LOG PAGE ========== -->
@@ -1667,13 +1707,118 @@ window.addEventListener('online', () => {
 });
 
 // =====================================================
+// EXPORT TO GOOGLE SHEETS REPORT
+// =====================================================
+function initExpMonth() {
+  const now = new Date();
+  document.getElementById('expMonth').value =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  ['expType','expMonth','expMachine'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateExpPreview);
+  });
+  updateExpPreview();
+}
+
+function updateExpPreview() {
+  const type    = document.getElementById('expType').value;
+  const monthV  = document.getElementById('expMonth').value;
+  const machine = document.getElementById('expMachine').value;
+  if (!monthV) return;
+  const [y, m] = monthV.split('-').map(Number);
+  const machines = _getExpMachines(machine);
+  const records  = _getExpRecords(machines, y, m);
+  const preview  = document.getElementById('expPreview');
+  preview.style.display = 'block';
+  preview.textContent =
+    `📊 ${type === 'daily' ? 'Daily Report (รายวัน)' : 'Weekly Report (รายสัปดาห์)'}\n` +
+    `📅 เดือน: ${m}/${y}\n` +
+    `🏭 เครื่อง: ${machines.join(', ')}\n` +
+    `📋 Records ที่มี: ${records.length} รายการ\n` +
+    `📁 จะสร้าง ${machines.length} Sheet ใน Google Sheets`;
+}
+
+function _getExpMachines(sel) {
+  if (sel === 'ALL_CHL') return ['ACH-01/1','ACH-01/2','ACH-01/3'];
+  if (sel === 'ALL_AHU') return ['AHU-F-101','AHU-F-102','AHU-F-103','AHU-F-201','AHU-F-202','AHU-F-203','AHU-F-204'];
+  return [sel];
+}
+
+function _getExpRecords(machines, year, month) {
+  return db.records.filter(r => {
+    if (!machines.includes(r.machine)) return false;
+    const d = new Date(r.ts);
+    return d.getFullYear() === year && d.getMonth()+1 === month;
+  });
+}
+
+async function exportExcel() {
+  if (!SHEETS_URL || SHEETS_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+    showToast('❌ ยังไม่ได้ตั้งค่า Apps Script URL', 'err'); return;
+  }
+  const type    = document.getElementById('expType').value;
+  const monthV  = document.getElementById('expMonth').value;
+  const machine = document.getElementById('expMachine').value;
+  if (!monthV) { showToast('❌ เลือกเดือนก่อน', 'err'); return; }
+
+  const [year, month] = monthV.split('-').map(Number);
+  const machines = _getExpMachines(machine);
+  const records  = _getExpRecords(machines, year, month);
+
+  if (records.length === 0) {
+    showToast('⚠️ ไม่มีข้อมูลในเดือนที่เลือก', 'wrn'); return;
+  }
+
+  // Show loading state
+  const btn = document.querySelector('[onclick="exportExcel()"]');
+  const orig = btn.textContent;
+  btn.textContent = '⏳ กำลังสร้าง Report...';
+  btn.disabled = true;
+  showToast('⏳ กำลังส่งข้อมูลไป Google Sheets...', 'wrn');
+
+  try {
+    const payload = { action: 'generateReport', payload: { type, year, month, machines, records } };
+    const res = await fetch(SHEETS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    // no-cors = opaque response, assume success if no error thrown
+    showToast(`✅ สร้าง Report สำเร็จ! เปิด Google Sheets ดูได้เลย`, 'ok');
+    // Open Sheets after short delay
+    setTimeout(() => {
+      const confirm = window.confirm('✅ Report สร้างแล้ว!\nต้องการเปิด Google Sheets ดูเลยไหม?');
+      if (confirm) window.open('https://docs.google.com/spreadsheets/', '_blank');
+    }, 500);
+  } catch(err) {
+    showToast('❌ ส่งไม่สำเร็จ: ' + err.message, 'err');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+function _getExpMachines(sel) {
+  if (sel === 'ALL_CHL') return ['ACH-01/1','ACH-01/2','ACH-01/3'];
+  if (sel === 'ALL_AHU') return ['AHU-F-101','AHU-F-102','AHU-F-103','AHU-F-201','AHU-F-202','AHU-F-203','AHU-F-204'];
+  return [sel];
+}
+
+function _getExpRecords(machines, year, month) {
+  return db.records.filter(r => {
+    if (!machines.includes(r.machine)) return false;
+    const d = new Date(r.ts);
+    return d.getFullYear() === year && d.getMonth()+1 === month;
+  });
+}
+
+// =====================================================
 // INIT
 // =====================================================
 buildMachineGrid();
 updateKPIs();
 renderWOList();
 checkURLParam();
-// Check pending queue on load
+initExpMonth();
 if (syncQueue.length > 0) updateSyncIndicator('offline');
 else updateSyncIndicator('idle');
 if (navigator.onLine && syncQueue.length > 0) flushQueue();
@@ -1682,9 +1827,9 @@ console.log('%cSecret: Tap MT circle 7× in 2s', 'color:#ffb800;font-size:11px;'
 console.log('%c📡 Sheets URL:', 'color:#5a7099;', SHEETS_URL);
 </script>
 
-<!-- QR Code library (generate) -->
+<!-- QR Code library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- QR Scanner library (scan camera) -->
+<!-- QR Scanner library -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </body>
 </html>
