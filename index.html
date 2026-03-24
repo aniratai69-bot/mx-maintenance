@@ -344,10 +344,9 @@ table.rt tr:hover td{background:rgba(0,212,255,.025);}
       <div class="fg">
         <div class="fl">👤 ผู้ตรวจ</div>
         <select id="techSel">
-          <option value="สมชาย">ช่างสมชาย ใจดี</option>
-          <option value="วิชัย">ช่างวิชัย มั่นคง</option>
-          <option value="สุรพล">ช่างสุรพล แข็งแกร่ง</option>
-          <option value="supervisor">วิศวกร (Supervisor)</option>
+          <option value="Suphanat">Mr. Suphanat Khamhom (Technician)</option>
+          <option value="Yuttana">Mr. Yuttana Inplang (Jr. Engineer)</option>
+          <option value="Anirat">Mr. Anirat Suwannarang (Sr. Supervisor)</option>
         </select>
       </div>
     </div>
@@ -545,9 +544,9 @@ table.rt tr:hover td{background:rgba(0,212,255,.025);}
         <div class="fl">👤 ผู้บันทึก</div>
         <select id="ffTech">
           <option value="ALL">สุ่มจากทีม</option>
-          <option value="สมชาย">ช่างสมชาย</option>
-          <option value="วิชัย">ช่างวิชัย</option>
-          <option value="สุรพล">ช่างสุรพล</option>
+          <option value="Suphanat">Mr. Suphanat Khamhom</option>
+          <option value="Yuttana">Mr. Yuttana Inplang</option>
+          <option value="Anirat">Mr. Anirat Suwannarang</option>
         </select>
       </div>
       <div class="fg">
@@ -713,7 +712,7 @@ MACHINES_DEF["AHU-F-203"] = {
 };
 
 const ALL_MACHINES = Object.keys(MACHINES_DEF);
-const TECHS = ["ช่างสมชาย ใจดี","ช่างวิชัย มั่นคง","ช่างสุรพล แข็งแกร่ง"];
+const TECHS = ["Mr. Suphanat Khamhom","Mr. Yuttana Inplang","Mr. Anirat Suwannarang"];
 
 // =====================================================
 // DB
@@ -1240,7 +1239,7 @@ function executeFF() {
   const sh = document.getElementById('ffShift').value;
   const targets = selM === 'ALL' ? ALL_MACHINES : [selM];
   const shifts = sh === 'both' ? ['09:30','15:30'] : sh === 'morning' ? ['09:30'] : ['15:30'];
-  const tlist = ['สมชาย','วิชัย','สุรพล'];
+  const tlist = ['Suphanat','Yuttana','Anirat'];
 
   let count = 0;
   const cur = new Date(s);
@@ -1280,7 +1279,7 @@ function randomEntry() {
   const items = MACHINES_DEF[machine].items;
   const data = {};
   items.forEach(it => { data[`item${it.no}`] = it.type === 'check' ? 'N' : (vals[it.no]||0); });
-  const tlist = ['สมชาย','วิชัย','สุรพล'];
+  const tlist = ['Suphanat','Yuttana','Anirat'];
   db.records.push({
     id: `REC-RND-${Date.now()}`, ts: ts.toISOString(), machine,
     type: MACHINES_DEF[machine].type,
@@ -1438,7 +1437,7 @@ function checkURLParam() {
 // GOOGLE SHEETS SYNC — Offline-first with queue
 // =====================================================
 // ⚙️ ใส่ URL จาก Apps Script หลัง Deploy
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzJfje9bfOd3rp9bujMnGtLkTyPVrxHME3Dh813wh_Yta5gbye0il4lt1rg5yxKEu-KAw/exec';
+const SHEETS_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
 
 let syncQueue = JSON.parse(localStorage.getItem('mxSyncQueue') || '[]');
 const saveSyncQueue = () => localStorage.setItem('mxSyncQueue', JSON.stringify(syncQueue));
