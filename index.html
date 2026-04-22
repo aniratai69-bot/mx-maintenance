@@ -1630,7 +1630,7 @@ function checkURLParam() {
 // GOOGLE SHEETS SYNC — Offline-first with queue
 // =====================================================
 // ⚙️ ใส่ URL จาก Apps Script หลัง Deploy
-const SHEETS_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxgcl68I2s_3_1bYav2vm_zYQlLJXHG1S5wrhq_dvzTj8fcndwmK6-9tJnrDjfHh-Mh1w/exec';
 
 let syncQueue = JSON.parse(localStorage.getItem('mxSyncQueue') || '[]');
 const saveSyncQueue = () => localStorage.setItem('mxSyncQueue', JSON.stringify(syncQueue));
